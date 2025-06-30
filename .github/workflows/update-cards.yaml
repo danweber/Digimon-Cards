@@ -1,0 +1,51 @@
+name: Update Cards
+
+on:
+  schedule:
+    - cron: "0 */72 * * *"
+  workflow_dispatch:
+
+
+jobs:
+  run_script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install beautifulsoup4 requests pillow
+
+      - name: Run Python script
+        run: python scripts/python/Wiki/GetDataFromWiki.py
+
+      - name: Check for changes
+        id: git_status
+        run: |
+          # Check if there are any changes to commit
+          # --porcelain prints output in an easily parsable format
+          # If there are changes, the command will output text; otherwise, it will be empty.
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "Changes detected."
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "No changes to commit."
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit everything
+        if: steps.git_status.outputs.changed == 'true'
+        run: |
+          git config --local user.email "digimoncard.app@gmail.de"
+          git config --local user.name "DigimonCardApp"
+          git add -A
+          git commit -am "[Automatic] Update Cards"
+          git push
